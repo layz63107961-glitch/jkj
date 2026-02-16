@@ -14,7 +14,9 @@ local Settings = {
         TeamCheck = true,
         VisibleCheck = true,
         FOV = 100,
-        Smoothness = 5
+        Smoothness = 5,
+        ShowFOV = true,
+        TargetLocked = false
     },
     ESP = {
         Enabled = false,
@@ -24,6 +26,9 @@ local Settings = {
         TeamCheck = true
     }
 }
+
+-- Variable pour le lock
+local LockedTarget = nil
 
 -- Création de l'interface GUI
 local ScreenGui = Instance.new("ScreenGui")
@@ -140,16 +145,42 @@ end)
 
 -- Info Aimbot
 local AimbotInfo = Instance.new("TextLabel")
-AimbotInfo.Size = UDim2.new(1, -20, 0, 120)
+AimbotInfo.Size = UDim2.new(1, -20, 0, 100)
 AimbotInfo.Position = UDim2.new(0, 10, 0, 80)
 AimbotInfo.BackgroundTransparency = 1
-AimbotInfo.Text = "FOV: 100\nLissage: 5\nVérif équipe: ON\nVérif visibilité: ON"
+AimbotInfo.Text = "FOV: 100\nLissage: 5\nVérif équipe: ON\nVérif visibilité: ON\nCercle FOV: ON"
 AimbotInfo.Font = Enum.Font.Gotham
 AimbotInfo.TextSize = 12
 AimbotInfo.TextColor3 = Color3.fromRGB(200, 200, 200)
 AimbotInfo.TextXAlignment = Enum.TextXAlignment.Left
 AimbotInfo.TextYAlignment = Enum.TextYAlignment.Top
 AimbotInfo.Parent = AimbotSection
+
+-- Toggle FOV Circle
+local FOVToggle = Instance.new("TextButton")
+FOVToggle.Size = UDim2.new(0, 150, 0, 30)
+FOVToggle.Position = UDim2.new(1, -160, 0, 40)
+FOVToggle.BackgroundColor3 = Color3.fromRGB(50, 220, 50)
+FOVToggle.Text = "Cercle FOV: ON"
+FOVToggle.Font = Enum.Font.Gotham
+FOVToggle.TextSize = 12
+FOVToggle.TextColor3 = Color3.fromRGB(255, 255, 255)
+FOVToggle.Parent = AimbotSection
+
+local FOVToggleCorner = Instance.new("UICorner")
+FOVToggleCorner.CornerRadius = UDim.new(0, 6)
+FOVToggleCorner.Parent = FOVToggle
+
+FOVToggle.MouseButton1Click:Connect(function()
+    Settings.Aimbot.ShowFOV = not Settings.Aimbot.ShowFOV
+    if Settings.Aimbot.ShowFOV then
+        FOVToggle.BackgroundColor3 = Color3.fromRGB(50, 220, 50)
+        FOVToggle.Text = "Cercle FOV: ON"
+    else
+        FOVToggle.BackgroundColor3 = Color3.fromRGB(220, 50, 50)
+        FOVToggle.Text = "Cercle FOV: OFF"
+    end
+end)
 
 -- Section ESP
 local ESPSection = Instance.new("Frame")
@@ -233,11 +264,68 @@ OpenButton.MouseButton1Click:Connect(function()
     MainFrame.Visible = not MainFrame.Visible
 end)
 
+-- Cercle FOV
+local FOVCircle = Drawing.new("Circle")
+FOVCircle.Thickness = 2
+FOVCircle.NumSides = 64
+FOVCircle.Radius = Settings.Aimbot.FOV
+FOVCircle.Filled = false
+FOVCircle.Visible = Settings.Aimbot.ShowFOV
+FOVCircle.ZIndex = 999
+FOVCircle.Transparency = 1
+FOVCircle.Color = Color3.fromRGB(255, 255, 255)
+
+-- Indicateur de lock
+local LockIndicator = Drawing.new("Circle")
+LockIndicator.Thickness = 3
+LockIndicator.NumSides = 32
+LockIndicator.Radius = 10
+LockIndicator.Filled = false
+LockIndicator.Visible = false
+LockIndicator.ZIndex = 1000
+LockIndicator.Transparency = 1
+LockIndicator.Color = Color3.fromRGB(255, 50, 50)
+
+-- Mise à jour position du cercle FOV
+RunService.RenderStepped:Connect(function()
+    local MousePos = UserInputService:GetMouseLocation()
+    FOVCircle.Position = MousePos
+    FOVCircle.Visible = Settings.Aimbot.ShowFOV and Settings.Aimbot.Enabled
+    FOVCircle.Radius = Settings.Aimbot.FOV
+    
+    if Settings.Aimbot.Enabled and LockedTarget then
+        FOVCircle.Color = Color3.fromRGB(255, 50, 50)
+    else
+        FOVCircle.Color = Color3.fromRGB(255, 255, 255)
+    end
+end)
+
 -- Fonctions Aimbot
 local function GetClosestPlayer()
     local MaxDistance = Settings.Aimbot.FOV
     local Target = nil
     
+    -- Si on a déjà une cible lockée et qu'elle est toujours valide
+    if LockedTarget and LockedTarget.Parent then
+        local character = LockedTarget.Parent
+        if character:FindFirstChild("Humanoid") and character.Humanoid.Health > 0 then
+            local pos, onScreen = Camera:WorldToViewportPoint(LockedTarget.Position)
+            local MousePos = UserInputService:GetMouseLocation()
+            local Distance = (Vector2.new(pos.X, pos.Y) - MousePos).Magnitude
+            
+            -- Si la cible lockée est toujours dans le FOV
+            if Distance < Settings.Aimbot.FOV and onScreen then
+                return character
+            else
+                -- Si elle sort du FOV, on délock
+                LockedTarget = nil
+            end
+        else
+            LockedTarget = nil
+        end
+    end
+    
+    -- Sinon on cherche une nouvelle cible
     for _, player in ipairs(Players:GetPlayers()) do
         if player ~= LocalPlayer then
             if Settings.Aimbot.TeamCheck and player.Team == LocalPlayer.Team then
@@ -245,16 +333,17 @@ local function GetClosestPlayer()
             end
             
             local character = player.Character
-            if character and character:FindFirstChild("HumanoidRootPart") and character:FindFirstChild("Humanoid") then
+            if character and character:FindFirstChild("Head") and character:FindFirstChild("Humanoid") then
                 if character.Humanoid.Health > 0 then
-                    local pos, onScreen = Camera:WorldToViewportPoint(character.HumanoidRootPart.Position)
+                    local pos, onScreen = Camera:WorldToViewportPoint(character.Head.Position)
                     
                     if onScreen then
-                        local Distance = (Vector2.new(pos.X, pos.Y) - Vector2.new(Camera.ViewportSize.X / 2, Camera.ViewportSize.Y / 2)).Magnitude
+                        local MousePos = UserInputService:GetMouseLocation()
+                        local Distance = (Vector2.new(pos.X, pos.Y) - MousePos).Magnitude
                         
                         if Distance < MaxDistance then
                             if Settings.Aimbot.VisibleCheck then
-                                local ray = Ray.new(Camera.CFrame.Position, (character.HumanoidRootPart.Position - Camera.CFrame.Position).Unit * 500)
+                                local ray = Ray.new(Camera.CFrame.Position, (character.Head.Position - Camera.CFrame.Position).Unit * 500)
                                 local part = workspace:FindPartOnRayWithIgnoreList(ray, {LocalPlayer.Character})
                                 
                                 if part and part:IsDescendantOf(character) then
@@ -275,19 +364,36 @@ local function GetClosestPlayer()
     return Target
 end
 
--- Boucle Aimbot
+-- Boucle Aimbot avec lock
 RunService.RenderStepped:Connect(function()
     if Settings.Aimbot.Enabled then
         local Target = GetClosestPlayer()
+        
         if Target and Target:FindFirstChild("Head") then
+            -- Lock sur la cible si elle entre dans le FOV
+            if not LockedTarget then
+                LockedTarget = Target.Head
+            end
+            
             local TargetPos = Camera:WorldToViewportPoint(Target.Head.Position)
             local MousePos = UserInputService:GetMouseLocation()
             
+            -- Afficher l'indicateur de lock
+            LockIndicator.Position = Vector2.new(TargetPos.X, TargetPos.Y)
+            LockIndicator.Visible = true
+            
+            -- Calcul du mouvement avec smoothing
             local DifferenceX = (TargetPos.X - MousePos.X) / Settings.Aimbot.Smoothness
             local DifferenceY = (TargetPos.Y - MousePos.Y) / Settings.Aimbot.Smoothness
             
             mousemoverel(DifferenceX, DifferenceY)
+        else
+            LockedTarget = nil
+            LockIndicator.Visible = false
         end
+    else
+        LockedTarget = nil
+        LockIndicator.Visible = false
     end
 end)
 
