@@ -14,9 +14,10 @@ local Settings = {
         TeamCheck = true,
         VisibleCheck = true,
         FOV = 100,
-        Smoothness = 5,
+        Smoothness = 0, -- 0 = 100% précision instantanée
         ShowFOV = true,
-        TargetLocked = false
+        TargetLocked = false,
+        AutoFire = false
     },
     ESP = {
         Enabled = false,
@@ -29,6 +30,8 @@ local Settings = {
 
 -- Variable pour le lock
 local LockedTarget = nil
+local LastShootTime = 0
+local ShootDelay = 0.1 -- Délai entre les tirs en secondes
 
 -- Création de l'interface GUI
 local ScreenGui = Instance.new("ScreenGui")
@@ -148,7 +151,7 @@ local AimbotInfo = Instance.new("TextLabel")
 AimbotInfo.Size = UDim2.new(1, -20, 0, 100)
 AimbotInfo.Position = UDim2.new(0, 10, 0, 80)
 AimbotInfo.BackgroundTransparency = 1
-AimbotInfo.Text = "FOV: 100\nLissage: 5\nVérif équipe: ON\nVérif visibilité: ON\nCercle FOV: ON"
+AimbotInfo.Text = "FOV: 100\nPrécision: 100%\nVérif équipe: ON\nVérif visibilité: ON\nCercle FOV: ON"
 AimbotInfo.Font = Enum.Font.Gotham
 AimbotInfo.TextSize = 12
 AimbotInfo.TextColor3 = Color3.fromRGB(200, 200, 200)
@@ -179,6 +182,32 @@ FOVToggle.MouseButton1Click:Connect(function()
     else
         FOVToggle.BackgroundColor3 = Color3.fromRGB(220, 50, 50)
         FOVToggle.Text = "Cercle FOV: OFF"
+    end
+end)
+
+-- Toggle Auto Fire
+local AutoFireToggle = Instance.new("TextButton")
+AutoFireToggle.Size = UDim2.new(0, 150, 0, 30)
+AutoFireToggle.Position = UDim2.new(1, -160, 0, 75)
+AutoFireToggle.BackgroundColor3 = Color3.fromRGB(220, 50, 50)
+AutoFireToggle.Text = "🔫 Auto Fire: OFF"
+AutoFireToggle.Font = Enum.Font.GothamBold
+AutoFireToggle.TextSize = 12
+AutoFireToggle.TextColor3 = Color3.fromRGB(255, 255, 255)
+AutoFireToggle.Parent = AimbotSection
+
+local AutoFireToggleCorner = Instance.new("UICorner")
+AutoFireToggleCorner.CornerRadius = UDim.new(0, 6)
+AutoFireToggleCorner.Parent = AutoFireToggle
+
+AutoFireToggle.MouseButton1Click:Connect(function()
+    Settings.Aimbot.AutoFire = not Settings.Aimbot.AutoFire
+    if Settings.Aimbot.AutoFire then
+        AutoFireToggle.BackgroundColor3 = Color3.fromRGB(255, 100, 50)
+        AutoFireToggle.Text = "🔫 Auto Fire: ON"
+    else
+        AutoFireToggle.BackgroundColor3 = Color3.fromRGB(220, 50, 50)
+        AutoFireToggle.Text = "🔫 Auto Fire: OFF"
     end
 end)
 
@@ -382,11 +411,28 @@ RunService.RenderStepped:Connect(function()
             LockIndicator.Position = Vector2.new(TargetPos.X, TargetPos.Y)
             LockIndicator.Visible = true
             
-            -- Calcul du mouvement avec smoothing
-            local DifferenceX = (TargetPos.X - MousePos.X) / Settings.Aimbot.Smoothness
-            local DifferenceY = (TargetPos.Y - MousePos.Y) / Settings.Aimbot.Smoothness
+            -- Calcul du mouvement - 100% précision (pas de smoothing)
+            if Settings.Aimbot.Smoothness == 0 then
+                -- Visée instantanée parfaite (snap)
+                local DifferenceX = TargetPos.X - MousePos.X
+                local DifferenceY = TargetPos.Y - MousePos.Y
+                mousemoverel(DifferenceX, DifferenceY)
+            else
+                -- Visée avec lissage
+                local DifferenceX = (TargetPos.X - MousePos.X) / Settings.Aimbot.Smoothness
+                local DifferenceY = (TargetPos.Y - MousePos.Y) / Settings.Aimbot.Smoothness
+                mousemoverel(DifferenceX, DifferenceY)
+            end
             
-            mousemoverel(DifferenceX, DifferenceY)
+            -- Auto Fire
+            if Settings.Aimbot.AutoFire then
+                local CurrentTime = tick()
+                if CurrentTime - LastShootTime >= ShootDelay then
+                    -- Simuler le clic gauche
+                    mouse1click()
+                    LastShootTime = CurrentTime
+                end
+            end
         else
             LockedTarget = nil
             LockIndicator.Visible = false
