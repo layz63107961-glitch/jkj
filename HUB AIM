@@ -1,0 +1,415 @@
+-- 26 HUB RPG
+-- Interface avec Aimbot et ESP
+
+local Players = game:GetService("Players")
+local RunService = game:GetService("RunService")
+local UserInputService = game:GetService("UserInputService")
+local Camera = workspace.CurrentCamera
+local LocalPlayer = Players.LocalPlayer
+
+-- Variables de configuration
+local Settings = {
+    Aimbot = {
+        Enabled = false,
+        TeamCheck = true,
+        VisibleCheck = true,
+        FOV = 100,
+        Smoothness = 5
+    },
+    ESP = {
+        Enabled = false,
+        ShowName = true,
+        ShowDistance = true,
+        ShowHealthBar = true,
+        TeamCheck = true
+    }
+}
+
+-- Création de l'interface GUI
+local ScreenGui = Instance.new("ScreenGui")
+ScreenGui.Name = "26HubRPG"
+ScreenGui.ResetOnSpawn = false
+ScreenGui.Parent = game.CoreGui
+
+-- Frame principale
+local MainFrame = Instance.new("Frame")
+MainFrame.Name = "MainFrame"
+MainFrame.Size = UDim2.new(0, 400, 0, 500)
+MainFrame.Position = UDim2.new(0.5, -200, 0.5, -250)
+MainFrame.BackgroundColor3 = Color3.fromRGB(25, 25, 35)
+MainFrame.BorderSizePixel = 0
+MainFrame.Active = true
+MainFrame.Draggable = true
+MainFrame.Visible = false
+MainFrame.Parent = ScreenGui
+
+-- Coins arrondis
+local UICorner = Instance.new("UICorner")
+UICorner.CornerRadius = UDim.new(0, 10)
+UICorner.Parent = MainFrame
+
+-- En-tête
+local Header = Instance.new("Frame")
+Header.Size = UDim2.new(1, 0, 0, 50)
+Header.BackgroundColor3 = Color3.fromRGB(35, 35, 50)
+Header.BorderSizePixel = 0
+Header.Parent = MainFrame
+
+local HeaderCorner = Instance.new("UICorner")
+HeaderCorner.CornerRadius = UDim.new(0, 10)
+HeaderCorner.Parent = Header
+
+local Title = Instance.new("TextLabel")
+Title.Size = UDim2.new(1, -20, 1, 0)
+Title.Position = UDim2.new(0, 10, 0, 0)
+Title.BackgroundTransparency = 1
+Title.Text = "26 HUB RPG"
+Title.Font = Enum.Font.GothamBold
+Title.TextSize = 24
+Title.TextColor3 = Color3.fromRGB(255, 255, 255)
+Title.TextXAlignment = Enum.TextXAlignment.Left
+Title.Parent = Header
+
+-- Bouton fermer
+local CloseButton = Instance.new("TextButton")
+CloseButton.Size = UDim2.new(0, 40, 0, 40)
+CloseButton.Position = UDim2.new(1, -45, 0, 5)
+CloseButton.BackgroundColor3 = Color3.fromRGB(220, 50, 50)
+CloseButton.Text = "X"
+CloseButton.Font = Enum.Font.GothamBold
+CloseButton.TextSize = 18
+CloseButton.TextColor3 = Color3.fromRGB(255, 255, 255)
+CloseButton.Parent = Header
+
+local CloseCorner = Instance.new("UICorner")
+CloseCorner.CornerRadius = UDim.new(0, 8)
+CloseCorner.Parent = CloseButton
+
+CloseButton.MouseButton1Click:Connect(function()
+    MainFrame.Visible = false
+end)
+
+-- Section Aimbot
+local AimbotSection = Instance.new("Frame")
+AimbotSection.Size = UDim2.new(1, -20, 0, 200)
+AimbotSection.Position = UDim2.new(0, 10, 0, 60)
+AimbotSection.BackgroundColor3 = Color3.fromRGB(30, 30, 45)
+AimbotSection.BorderSizePixel = 0
+AimbotSection.Parent = MainFrame
+
+local AimbotCorner = Instance.new("UICorner")
+AimbotCorner.CornerRadius = UDim.new(0, 8)
+AimbotCorner.Parent = AimbotSection
+
+local AimbotTitle = Instance.new("TextLabel")
+AimbotTitle.Size = UDim2.new(1, -20, 0, 30)
+AimbotTitle.Position = UDim2.new(0, 10, 0, 5)
+AimbotTitle.BackgroundTransparency = 1
+AimbotTitle.Text = "🎯 AIMBOT"
+AimbotTitle.Font = Enum.Font.GothamBold
+AimbotTitle.TextSize = 18
+AimbotTitle.TextColor3 = Color3.fromRGB(100, 200, 255)
+AimbotTitle.TextXAlignment = Enum.TextXAlignment.Left
+AimbotTitle.Parent = AimbotSection
+
+-- Toggle Aimbot
+local AimbotToggle = Instance.new("TextButton")
+AimbotToggle.Size = UDim2.new(0, 150, 0, 35)
+AimbotToggle.Position = UDim2.new(0, 10, 0, 40)
+AimbotToggle.BackgroundColor3 = Color3.fromRGB(220, 50, 50)
+AimbotToggle.Text = "Désactivé"
+AimbotToggle.Font = Enum.Font.GothamBold
+AimbotToggle.TextSize = 14
+AimbotToggle.TextColor3 = Color3.fromRGB(255, 255, 255)
+AimbotToggle.Parent = AimbotSection
+
+local AimbotToggleCorner = Instance.new("UICorner")
+AimbotToggleCorner.CornerRadius = UDim.new(0, 8)
+AimbotToggleCorner.Parent = AimbotToggle
+
+AimbotToggle.MouseButton1Click:Connect(function()
+    Settings.Aimbot.Enabled = not Settings.Aimbot.Enabled
+    if Settings.Aimbot.Enabled then
+        AimbotToggle.BackgroundColor3 = Color3.fromRGB(50, 220, 50)
+        AimbotToggle.Text = "Activé"
+    else
+        AimbotToggle.BackgroundColor3 = Color3.fromRGB(220, 50, 50)
+        AimbotToggle.Text = "Désactivé"
+    end
+end)
+
+-- Info Aimbot
+local AimbotInfo = Instance.new("TextLabel")
+AimbotInfo.Size = UDim2.new(1, -20, 0, 120)
+AimbotInfo.Position = UDim2.new(0, 10, 0, 80)
+AimbotInfo.BackgroundTransparency = 1
+AimbotInfo.Text = "FOV: 100\nLissage: 5\nVérif équipe: ON\nVérif visibilité: ON"
+AimbotInfo.Font = Enum.Font.Gotham
+AimbotInfo.TextSize = 12
+AimbotInfo.TextColor3 = Color3.fromRGB(200, 200, 200)
+AimbotInfo.TextXAlignment = Enum.TextXAlignment.Left
+AimbotInfo.TextYAlignment = Enum.TextYAlignment.Top
+AimbotInfo.Parent = AimbotSection
+
+-- Section ESP
+local ESPSection = Instance.new("Frame")
+ESPSection.Size = UDim2.new(1, -20, 0, 200)
+ESPSection.Position = UDim2.new(0, 10, 0, 270)
+ESPSection.BackgroundColor3 = Color3.fromRGB(30, 30, 45)
+ESPSection.BorderSizePixel = 0
+ESPSection.Parent = MainFrame
+
+local ESPCorner = Instance.new("UICorner")
+ESPCorner.CornerRadius = UDim.new(0, 8)
+ESPCorner.Parent = ESPSection
+
+local ESPTitle = Instance.new("TextLabel")
+ESPTitle.Size = UDim2.new(1, -20, 0, 30)
+ESPTitle.Position = UDim2.new(0, 10, 0, 5)
+ESPTitle.BackgroundTransparency = 1
+ESPTitle.Text = "👁️ ESP"
+ESPTitle.Font = Enum.Font.GothamBold
+ESPTitle.TextSize = 18
+ESPTitle.TextColor3 = Color3.fromRGB(255, 150, 50)
+ESPTitle.TextXAlignment = Enum.TextXAlignment.Left
+ESPTitle.Parent = ESPSection
+
+-- Toggle ESP
+local ESPToggle = Instance.new("TextButton")
+ESPToggle.Size = UDim2.new(0, 150, 0, 35)
+ESPToggle.Position = UDim2.new(0, 10, 0, 40)
+ESPToggle.BackgroundColor3 = Color3.fromRGB(220, 50, 50)
+ESPToggle.Text = "Désactivé"
+ESPToggle.Font = Enum.Font.GothamBold
+ESPToggle.TextSize = 14
+ESPToggle.TextColor3 = Color3.fromRGB(255, 255, 255)
+ESPToggle.Parent = ESPSection
+
+local ESPToggleCorner = Instance.new("UICorner")
+ESPToggleCorner.CornerRadius = UDim.new(0, 8)
+ESPToggleCorner.Parent = ESPToggle
+
+ESPToggle.MouseButton1Click:Connect(function()
+    Settings.ESP.Enabled = not Settings.ESP.Enabled
+    if Settings.ESP.Enabled then
+        ESPToggle.BackgroundColor3 = Color3.fromRGB(50, 220, 50)
+        ESPToggle.Text = "Activé"
+    else
+        ESPToggle.BackgroundColor3 = Color3.fromRGB(220, 50, 50)
+        ESPToggle.Text = "Désactivé"
+    end
+end)
+
+-- Info ESP
+local ESPInfo = Instance.new("TextLabel")
+ESPInfo.Size = UDim2.new(1, -20, 0, 120)
+ESPInfo.Position = UDim2.new(0, 10, 0, 80)
+ESPInfo.BackgroundTransparency = 1
+ESPInfo.Text = "Afficher nom: ON\nAfficher distance: ON\nBarre de vie: ON\nVérif équipe: ON"
+ESPInfo.Font = Enum.Font.Gotham
+ESPInfo.TextSize = 12
+ESPInfo.TextColor3 = Color3.fromRGB(200, 200, 200)
+ESPInfo.TextXAlignment = Enum.TextXAlignment.Left
+ESPInfo.TextYAlignment = Enum.TextYAlignment.Top
+ESPInfo.Parent = ESPSection
+
+-- Bouton d'ouverture
+local OpenButton = Instance.new("TextButton")
+OpenButton.Name = "OpenButton"
+OpenButton.Size = UDim2.new(0, 150, 0, 50)
+OpenButton.Position = UDim2.new(0, 10, 0, 10)
+OpenButton.BackgroundColor3 = Color3.fromRGB(100, 50, 200)
+OpenButton.Text = "26 HUB RPG"
+OpenButton.Font = Enum.Font.GothamBold
+OpenButton.TextSize = 16
+OpenButton.TextColor3 = Color3.fromRGB(255, 255, 255)
+OpenButton.Parent = ScreenGui
+
+local OpenCorner = Instance.new("UICorner")
+OpenCorner.CornerRadius = UDim.new(0, 10)
+OpenCorner.Parent = OpenButton
+
+OpenButton.MouseButton1Click:Connect(function()
+    MainFrame.Visible = not MainFrame.Visible
+end)
+
+-- Fonctions Aimbot
+local function GetClosestPlayer()
+    local MaxDistance = Settings.Aimbot.FOV
+    local Target = nil
+    
+    for _, player in ipairs(Players:GetPlayers()) do
+        if player ~= LocalPlayer then
+            if Settings.Aimbot.TeamCheck and player.Team == LocalPlayer.Team then
+                continue
+            end
+            
+            local character = player.Character
+            if character and character:FindFirstChild("HumanoidRootPart") and character:FindFirstChild("Humanoid") then
+                if character.Humanoid.Health > 0 then
+                    local pos, onScreen = Camera:WorldToViewportPoint(character.HumanoidRootPart.Position)
+                    
+                    if onScreen then
+                        local Distance = (Vector2.new(pos.X, pos.Y) - Vector2.new(Camera.ViewportSize.X / 2, Camera.ViewportSize.Y / 2)).Magnitude
+                        
+                        if Distance < MaxDistance then
+                            if Settings.Aimbot.VisibleCheck then
+                                local ray = Ray.new(Camera.CFrame.Position, (character.HumanoidRootPart.Position - Camera.CFrame.Position).Unit * 500)
+                                local part = workspace:FindPartOnRayWithIgnoreList(ray, {LocalPlayer.Character})
+                                
+                                if part and part:IsDescendantOf(character) then
+                                    MaxDistance = Distance
+                                    Target = character
+                                end
+                            else
+                                MaxDistance = Distance
+                                Target = character
+                            end
+                        end
+                    end
+                end
+            end
+        end
+    end
+    
+    return Target
+end
+
+-- Boucle Aimbot
+RunService.RenderStepped:Connect(function()
+    if Settings.Aimbot.Enabled then
+        local Target = GetClosestPlayer()
+        if Target and Target:FindFirstChild("Head") then
+            local TargetPos = Camera:WorldToViewportPoint(Target.Head.Position)
+            local MousePos = UserInputService:GetMouseLocation()
+            
+            local DifferenceX = (TargetPos.X - MousePos.X) / Settings.Aimbot.Smoothness
+            local DifferenceY = (TargetPos.Y - MousePos.Y) / Settings.Aimbot.Smoothness
+            
+            mousemoverel(DifferenceX, DifferenceY)
+        end
+    end
+end)
+
+-- Fonctions ESP
+local ESPObjects = {}
+
+local function CreateESP(player)
+    if player == LocalPlayer then return end
+    
+    local character = player.Character
+    if not character then return end
+    
+    local BillboardGui = Instance.new("BillboardGui")
+    BillboardGui.Name = "ESP_" .. player.Name
+    BillboardGui.Adornee = character:WaitForChild("HumanoidRootPart", 5)
+    BillboardGui.Size = UDim2.new(0, 200, 0, 100)
+    BillboardGui.StudsOffset = Vector3.new(0, 3, 0)
+    BillboardGui.AlwaysOnTop = true
+    BillboardGui.Parent = ScreenGui
+    
+    local Frame = Instance.new("Frame")
+    Frame.Size = UDim2.new(1, 0, 1, 0)
+    Frame.BackgroundTransparency = 1
+    Frame.Parent = BillboardGui
+    
+    local NameLabel = Instance.new("TextLabel")
+    NameLabel.Size = UDim2.new(1, 0, 0, 20)
+    NameLabel.BackgroundTransparency = 1
+    NameLabel.Text = player.Name
+    NameLabel.Font = Enum.Font.GothamBold
+    NameLabel.TextSize = 14
+    NameLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
+    NameLabel.TextStrokeTransparency = 0.5
+    NameLabel.Parent = Frame
+    
+    local DistanceLabel = Instance.new("TextLabel")
+    DistanceLabel.Size = UDim2.new(1, 0, 0, 20)
+    DistanceLabel.Position = UDim2.new(0, 0, 0, 20)
+    DistanceLabel.BackgroundTransparency = 1
+    DistanceLabel.Text = "0m"
+    DistanceLabel.Font = Enum.Font.Gotham
+    DistanceLabel.TextSize = 12
+    DistanceLabel.TextColor3 = Color3.fromRGB(200, 200, 200)
+    DistanceLabel.TextStrokeTransparency = 0.5
+    DistanceLabel.Parent = Frame
+    
+    local HealthBar = Instance.new("Frame")
+    HealthBar.Size = UDim2.new(0.8, 0, 0, 4)
+    HealthBar.Position = UDim2.new(0.1, 0, 0, 45)
+    HealthBar.BackgroundColor3 = Color3.fromRGB(50, 220, 50)
+    HealthBar.BorderSizePixel = 0
+    HealthBar.Parent = Frame
+    
+    ESPObjects[player] = {
+        Billboard = BillboardGui,
+        NameLabel = NameLabel,
+        DistanceLabel = DistanceLabel,
+        HealthBar = HealthBar
+    }
+end
+
+local function RemoveESP(player)
+    if ESPObjects[player] then
+        ESPObjects[player].Billboard:Destroy()
+        ESPObjects[player] = nil
+    end
+end
+
+-- Mise à jour ESP
+RunService.RenderStepped:Connect(function()
+    if Settings.ESP.Enabled then
+        for player, esp in pairs(ESPObjects) do
+            if player.Character and player.Character:FindFirstChild("HumanoidRootPart") and player.Character:FindFirstChild("Humanoid") then
+                local distance = (LocalPlayer.Character.HumanoidRootPart.Position - player.Character.HumanoidRootPart.Position).Magnitude
+                esp.DistanceLabel.Text = math.floor(distance) .. "m"
+                
+                local health = player.Character.Humanoid.Health
+                local maxHealth = player.Character.Humanoid.MaxHealth
+                esp.HealthBar.Size = UDim2.new(0.8 * (health / maxHealth), 0, 0, 4)
+                
+                if health / maxHealth > 0.5 then
+                    esp.HealthBar.BackgroundColor3 = Color3.fromRGB(50, 220, 50)
+                elseif health / maxHealth > 0.25 then
+                    esp.HealthBar.BackgroundColor3 = Color3.fromRGB(255, 200, 50)
+                else
+                    esp.HealthBar.BackgroundColor3 = Color3.fromRGB(220, 50, 50)
+                end
+                
+                esp.Billboard.Enabled = true
+            else
+                esp.Billboard.Enabled = false
+            end
+        end
+    else
+        for _, esp in pairs(ESPObjects) do
+            esp.Billboard.Enabled = false
+        end
+    end
+end)
+
+-- Événements joueurs
+Players.PlayerAdded:Connect(function(player)
+    player.CharacterAdded:Connect(function()
+        wait(1)
+        CreateESP(player)
+    end)
+end)
+
+Players.PlayerRemoving:Connect(function(player)
+    RemoveESP(player)
+end)
+
+-- Initialisation ESP pour les joueurs existants
+for _, player in ipairs(Players:GetPlayers()) do
+    if player.Character then
+        CreateESP(player)
+    end
+    player.CharacterAdded:Connect(function()
+        wait(1)
+        CreateESP(player)
+    end)
+end
+
+print("26 HUB RPG chargé avec succès!")
+print("Appuyez sur le bouton '26 HUB RPG' pour ouvrir l'interface")
